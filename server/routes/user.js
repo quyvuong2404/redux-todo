@@ -1,9 +1,7 @@
 import express from 'express';
-var jwt = require('jsonwebtoken');
 
+import { encodeJWT, decodeJWT } from '../utils/jwt';
 import User from '../models/user';
-
-const tokenSecret = 'redux-todo-secret';
 
 var router = express.Router();
 
@@ -11,14 +9,18 @@ router.post('/user', (req, res) => {
 	var email = req.body.email;
 	User.findOne({email: email}).lean().exec((err, user) => {
 		if (err) {
-			res.status(500).send({error: err});
+			res.status(500).send({ error: err });
 		}
 		if (user) {
 			user['id'] = user['_id'];
 			delete user['_id'];
             delete user['__v'];
-            var token = jwt.sign(user, tokenSecret);
-			res.json({ token: token, profile: user });
+			encodeJWT(user, (err, token) => {
+				if (err) {
+					res.status(500).send({ error: err });
+				}
+				res.json({ token: token, profile: user });
+			});
 		} else {
 			var newUser = new User({
 				email: email,
@@ -32,11 +34,12 @@ router.post('/user', (req, res) => {
 				var user = result.toObject();
 				user.id = user._id;
 				delete user._id;
-                var token = jwt.sign(user, tokenSecret);
-				res.json({
-					profile: user,
-					token: token
-				});
+                encodeJWT(user, (err, token) => {
+                	if (err) {
+                		res.status(500).send({ error: err });
+                	}
+                	res.json({ token: token, profile: user });
+                });
 			});
 		}
 	});
@@ -44,27 +47,34 @@ router.post('/user', (req, res) => {
 
 router.get('/user/profile', (req, res) => {
 	var token = req.query.token;
-    jwt.verify(token, tokenSecret, (jwt_err, decoded) => {
-        User.findOne({ _id: decoded.id }).exec((err, user) => {
-            if (err) {
-                res.status(500).send({ error: err });
-            }
-            if (jwt_err.name == "TokenExpiredError") {
-                let newToken = jwt.sign(decoded, tokenSecret);
-                res.json({ profile: user, newToken: newToken });
-            } else {
-                res.json({ profile: user });
-            }
-        });
+    decodeJWT(token, (err, decoded) => {
+    	if (err) {
+    		if (err.name == "TokenExpiredError") {
+    		    encodeJWT(decoded, (err, token) => {
+    		    	if (err) {
+    		    	    res.status(500).send({ error: err });
+    		    	}
+    		    	res.json({ token: token, profile: user });
+    		    });
+    		}
+    		res.status(500).send({ error: err })
+    	} else {
+    		User.findOne({ _id: decoded.id }).exec((err, user) => {
+    		    if (err) {
+    		        res.status(500).send({ error: err });
+    		    }
+    		    res.json({ profile: user });
+    		});
+    	}
     });
 });
 
-router.get('/user/token/refresh', (req, res) => {
-    var token = req.query.token;
-    jwt.verify(token, tokenSecret, (err, decoded) => {
-        let newToken = jwt.sign(decoded, tokenSecret);
-        res.json({ newToken: newToken });
-    });
-})
+// router.get('/user/token/refresh', (req, res) => {
+//     var token = req.query.token;
+//     jwt.verify(token, tokenSecret, (err, decoded) => {
+//         let newToken = jwt.sign(decoded, tokenSecret);
+//         res.json({ newToken: newToken });
+//     });
+// });
 
 export default router;

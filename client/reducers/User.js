@@ -17,11 +17,6 @@ export default function user(state = initialState, action){
 	switch(action.type){
 		case FB_LOGIN_SUCCESS:
 			if (action.data == null) {
-				// return Object.assign({}, state, {
-				// 	isLoggedIn: false,
-				// 	token: null,
-				// 	profile: null
-				// });
 				return {
 					...state,
 					isLoggedIn: false,
@@ -30,11 +25,6 @@ export default function user(state = initialState, action){
 				};
 			} else {
 				localStorage.setItem('todo_token', action.data.token);
-				// return Object.assign({}, state, {
-				// 	isLoggedIn: true,
-				// 	token: action.data.token,
-				// 	profile: action.data.profile
-				// });
 				return {
 					...state,
 					isLoggedIn: true,

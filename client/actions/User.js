@@ -1,4 +1,10 @@
+import { browserHistory } from 'react-router';
+
 import * as types from '../constants/UserTypes';
+
+function forwardTo(location){
+	browserHistory.push(location);
+}
 
 export function fbLogin(data){
 	return (dispatch) => {
@@ -10,11 +16,12 @@ export function fbLogin(data){
 			},
 			body: body
 		}).then(response => response.json().then((result) => {
-			if (response.ok) {console.log(result);
+			if (response.ok) {
 				if (result.error) {
 					dispatch(fbLoginSuccess(null));
 				} else {
 					dispatch(fbLoginSuccess(result));
+					forwardTo("/");
 				}				
 			}
 		}));
